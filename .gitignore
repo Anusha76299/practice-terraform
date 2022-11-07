@@ -1,3 +1,3 @@
 .env
 .terraform
-.terraform.lock.hcl
+Demo1/.terraform.lock.hcl
