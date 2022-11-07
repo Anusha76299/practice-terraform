@@ -1,0 +1,107 @@
+terraform {
+     required_providers {
+        aws = {
+        source = "hashicorp/aws"
+     }
+  }
+}
+     provider "aws" {
+            region = "us-west-2"
+            profile = "default"
+        }
+     resource "aws_vpc" "itaxvpc" {
+               cidr_block = "10.0.0.0/16"
+               }
+     resource "aws_subnet" "itaxpv1" {
+        vpc_id = aws_vpc.itaxvpc.id
+        cidr_block = "10.0.1.0/24"
+        availability_zone = "us-west-2a"     
+     }
+     resource "aws_subnet" "itaxpub2" {
+        vpc_id = aws_vpc.itaxvpc.id
+        cidr_block = "10.0.2.0/24"
+        availability_zone = "us-west-2b"
+}
+    resource "aws_security_group" "sshsg" {
+        vpc_id = aws_vpc.itaxvpc.id
+          ingress {
+              
+              from_port = 22
+              to_port = 22
+              protocol = "tcp"
+              cidr_blocks = ["0.0.0.0/0"]
+           }
+           egress {
+               from_port = 8080
+               to_port = 8081
+                protocol = "tcp"
+                cidr_blocks = ["0.0.0.0/0"]
+           }   
+     }   
+    resource "aws_security_group" "appsg" {
+        vpc_id = aws_vpc.itaxvpc.id
+          ingress {
+              from_port = 0
+              to_port =6553
+              protocol = "tcp"
+              cidr_blocks = ["10.0.0.0/16"]
+           }
+           egress {
+               from_port = 8080
+               to_port = 8081
+                protocol = "tcp"
+                cidr_blocks = ["10.0.0.0/16"]
+           }   
+          }
+          resource "aws_internet_gateway" "itax_ig" {
+               vpc_id = aws_vpc.itaxvpc.id
+              tags = {
+                Name = "itax_ig"  
+         }
+     }
+ resource "aws_route_table" "itaxrt" {
+    vpc_id = aws_vpc.itaxvpc.id
+    route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.itax_ig.id
+    }
+ }
+ resource "aws_route_table_association" "itaxroute_association" {
+    route_table_id = aws_route_table.itaxrt.id
+    subnet_id = aws_subnet.itaxpv1.id
+ }
+
+    resource "aws_instance" "ec2lbr" {
+        subnet_id = aws_subnet.itaxpv1.id
+        instance_type = "t2.micro"
+        ami = "ami-00af37d1144686454"
+        vpc_security_group_ids = [aws_security_group.sshsg.id]
+    }     
+    resource "aws_s3_bucket" "itaxbucket" {
+    bucket = "itaxbucket"
+    tags = {
+        Name = "My bucket"
+        Environment = "Dev"
+  }
+} 
+    resource "aws_lb" "itaxlb" {
+        name = "itax-lb-tf"
+        internal = true 
+        load_balancer_type = "application"
+        subnet_mapping {
+            subnet_id            = aws_subnet.itaxpv1.id
+       }
+       subnet_mapping {
+            subnet_id            = aws_subnet.itaxpub2.id
+            }
+  enable_deletion_protection = false
+
+  access_logs {
+    bucket  = aws_s3_bucket.itaxbucket.bucket
+    prefix  = "itax-lb-tf"
+    enabled = false 
+  }
+tags = {
+    Environment = "production"
+        }
+    }
