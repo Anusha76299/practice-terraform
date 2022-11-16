@@ -9,6 +9,7 @@ resource "aws_instance" "webserver1" {
     Name = "webserver1-${count.index}"
   }
   associate_public_ip_address = "true"
+  key_name = "jenkinsKP"
 }
 
 
@@ -20,9 +21,10 @@ resource "aws_lb" "test" {
   subnets            = [aws_subnet.main.id, aws_subnet.public.id]
 
   enable_deletion_protection = false
-
+ 
 }
 resource "aws_vpc" "vpc1" {
+  enable_dns_hostnames = true
   cidr_block = "10.0.0.0/16"
 	tags = { 
   		Name = "vpc1"
@@ -96,7 +98,7 @@ resource "aws_route_table_association" "rt2" {
 
 resource "aws_lb_listener" "front_end" {
   load_balancer_arn = aws_lb.test.arn
-  port              = "80"
+  port              = "8080"
   protocol          = "HTTP"
   #ssl_policy        = "ELBSecurityPolicy-2016-08"
  # certificate_arn   = "arn:aws:iam::187416307283:server-certificate/test_cert_rab3wuqwgja25ct3n4jdj2tzu4"
@@ -109,7 +111,7 @@ resource "aws_lb_listener" "front_end" {
 
 resource "aws_lb_target_group" "test" {
   name     = "alb-target"
-  port     = 80
+  port     = 8080
   protocol = "HTTP"
   vpc_id   = aws_vpc.vpc1.id
 }
@@ -117,5 +119,5 @@ resource "aws_lb_target_group_attachment" "test" {
   count = 2
   target_group_arn = aws_lb_target_group.test.arn
   target_id        = aws_instance.webserver1[count.index].id 
-  port             = 80
+  port             = 8080
 }
