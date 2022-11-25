@@ -4,6 +4,7 @@ resource "aws_instance" "webserver1" {
   subnet_id = aws_subnet.main.id
   ami = "ami-09d3b3274b6c5d4aa" //ap-south-1
   instance_type = "t2.micro"
+  key_name = "jenkinsKP"
   tags = {
     Name = "webserver1-${count.index}"
   }
